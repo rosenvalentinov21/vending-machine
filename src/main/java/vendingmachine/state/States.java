@@ -98,7 +98,7 @@ public enum States implements State {
                     paymentService.updateBalance(item.price);
                     itemService.setSelectedItem(item);
                     VendingMachine.setState(nextState());
-                    if (VendingMachine.clientMoney.compareTo(item.price) == 0) {
+                    if (VendingMachine.clientMoney.compareTo(item.price) != 0) {
                         paymentService.returnChange(change);
                     }
 
