@@ -9,57 +9,89 @@ import java.math.BigDecimal;
 import java.util.HashMap;
 
 public class VendingMachine {
-    private static States state = States.WAITING;
-    public static BigDecimal balance = BigDecimal.valueOf(0);
-    public static BigDecimal clientMoney = BigDecimal.valueOf(0);
+    private States state = States.WAITING;
+    private BigDecimal balance = BigDecimal.valueOf(0);
+    private BigDecimal clientMoney = BigDecimal.valueOf(0);
 
-    public static Item currentItem = null;
+    private Item currentItem = null;
 
-    public static ItemInventory itemInventory = new ItemInventory(new HashMap<>());
-    public static CoinInventory coinInventory = new CoinInventory(new HashMap<>());
+    private ItemInventory itemInventory = new ItemInventory(new HashMap<>());
+    private CoinInventory coinInventory = new CoinInventory(new HashMap<>());
 
 
-    public static void setCurrentItem(Item currentItem) {
-        VendingMachine.currentItem = currentItem;
+    public void setCurrentItem(Item currentItem) {
+        this.currentItem = currentItem;
     }
 
-    public static void addCurrency(BigDecimal amount) {
-        state.addCurrency(amount);
+    public Item getCurrentItem() {
+        return currentItem;
     }
 
-    public static void selectItem(Item item) {
-        state.selectItem(item);
+    public void addCurrency(BigDecimal amount) {
+        state.addCurrency(amount, this);
     }
 
-    public static void makeItem() {
-        state.makeItem();
+    public void selectItem(Item item) {
+        state.selectItem(item, this);
     }
 
-    public static void takeItem() {
-        state.takeItem();
+    public void makeItem() {
+        state.makeItem(this);
     }
 
-    public static void returnMoney() {
-        state.returnMoney();
+    public void takeItem() {
+        state.takeItem(this);
     }
 
-    public static void service() {
-        state.service();
+    public void returnMoney() {
+        state.returnMoney(this);
     }
 
-    public static void setState(States state) {
-        VendingMachine.state = state;
+    public void service() {
+        state.service(this);
     }
 
-    public static void returnToInitialState() {
+    public void setState(States state) {
+        this.state = state;
+    }
+
+    public void returnToInitialState() {
         state = States.WAITING;
     }
 
-    public static void setBalance(BigDecimal balance) {
-        VendingMachine.balance = balance;
+    public States getState() {
+        return state;
     }
 
-    public static States getState() {
-        return state;
+    public BigDecimal getBalance() {
+        return balance;
+    }
+
+    public void setBalance(BigDecimal balance) {
+        this.balance = balance;
+    }
+
+    public BigDecimal getClientMoney() {
+        return clientMoney;
+    }
+
+    public void setClientMoney(BigDecimal clientMoney) {
+        this.clientMoney = clientMoney;
+    }
+
+    public ItemInventory getItemInventory() {
+        return itemInventory;
+    }
+
+    public void setItemInventory(ItemInventory itemInventory) {
+        this.itemInventory = itemInventory;
+    }
+
+    public CoinInventory getCoinInventory() {
+        return coinInventory;
+    }
+
+    public void setCoinInventory(CoinInventory coinInventory) {
+        this.coinInventory = coinInventory;
     }
 }
