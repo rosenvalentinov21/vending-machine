@@ -6,9 +6,9 @@ public class Item {
 
     public final String name;
 
-    public BigDecimal price;
+    public final BigDecimal price;
 
-    public Item(String name, BigDecimal price) {
+    public Item(final String name, final BigDecimal price) {
         this.name = name;
         this.price = price;
     }
