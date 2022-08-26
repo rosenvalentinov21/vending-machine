@@ -15,11 +15,12 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class PaymentServiceTest {
 
-    PaymentService paymentService = new PaymentService();
+    private final VendingMachine vendingMachine = new VendingMachine();
+    private final PaymentService paymentService = new PaymentService(vendingMachine);
 
     @Test
     void getChange() {
-        paymentService.refillCoinInventory();
+        vendingMachine.getCoinInventory().refillCoinInventory();
         List<Coin> change = paymentService.getChange(BigDecimal.valueOf(2));
 
         assertEquals(change.get(0), Coin.TWO_DOLLARS);
@@ -27,26 +28,10 @@ class PaymentServiceTest {
 
     @Test
     void calculateBalance() {
-        Map<Coin, Integer> coinTypeToQuantity = new HashMap<>();
-        coinTypeToQuantity.put(Coin.DOLLAR, 100);
-
-        VendingMachine.coinInventory = new CoinInventory(coinTypeToQuantity);
+        vendingMachine.getCoinInventory().getCoinTypeToQuantity().put(Coin.DOLLAR, 100);
 
         paymentService.calculateBalance();
 
-        assertEquals(BigDecimal.valueOf(100).doubleValue(), VendingMachine.balance.doubleValue());
-    }
-
-    @Test
-    void refillCoinInventory() {
-        Map<Coin, Integer> coinTypeToQuantity = new HashMap<>();
-
-        VendingMachine.coinInventory = new CoinInventory(new HashMap<>());
-
-        assertEquals(0, VendingMachine.coinInventory.coinTypeToQuantity.size());
-
-        paymentService.refillCoinInventory();
-
-        assertTrue(VendingMachine.coinInventory.coinTypeToQuantity.size() > 0);
+        assertEquals(BigDecimal.valueOf(100).doubleValue(), vendingMachine.getBalance().doubleValue());
     }
 }
