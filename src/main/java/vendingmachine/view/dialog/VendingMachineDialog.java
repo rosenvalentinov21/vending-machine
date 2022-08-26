@@ -13,6 +13,11 @@ import java.util.Scanner;
 public class VendingMachineDialog implements Dialog {
 
     private final MessageDisplayer messageDisplayer = new MessageDisplayer();
+    private final VendingMachine vendingMachine;
+
+    public VendingMachineDialog(final VendingMachine vendingMachine) {
+        this.vendingMachine = vendingMachine;
+    }
 
     @Override
     public BigDecimal addCurrency() {
@@ -21,26 +26,13 @@ public class VendingMachineDialog implements Dialog {
         String command;
 
         while (true) {
-            messageDisplayer.displayMessage("Choose coin type to insert: ");
-            messageDisplayer.displayMessage("1) 5 cents ");
-            messageDisplayer.displayMessage("2) 10 cents ");
-            messageDisplayer.displayMessage("3) 25 cents ");
-            messageDisplayer.displayMessage("4) 50 cents ");
-            messageDisplayer.displayMessage("5) 1 dollar ");
-            messageDisplayer.displayMessage("6) 2 dollars ");
-            messageDisplayer.displayMessage("7) finish ");
-            messageDisplayer.displayMessage("Choice: ");
-
+            displayCoins();
             command = sc.nextLine();
 
             if (command.equals("7")) {
                 break;
             } else {
-                try {
-                    amount = amount.add(checkCommand(command));
-                } catch (InvalidCoinInputException ex) {
-                    messageDisplayer.displayMessage("Please enter a valid coin!");
-                }
+                amount = addAmount(amount, command);
             }
         }
 
@@ -48,8 +40,29 @@ public class VendingMachineDialog implements Dialog {
         return amount;
     }
 
-    private BigDecimal checkCommand(String command) {
-        BigDecimal value = switch (command) {
+    private BigDecimal addAmount(BigDecimal amount, final String command) {
+        try {
+            amount = amount.add(checkCommand(command));
+        } catch (InvalidCoinInputException ex) {
+            messageDisplayer.displayMessage("Please enter a valid coin!");
+        }
+        return amount;
+    }
+
+    private void displayCoins() {
+        messageDisplayer.displayMessage("Choose coin type to insert: ");
+        messageDisplayer.displayMessage("1) 5 cents ");
+        messageDisplayer.displayMessage("2) 10 cents ");
+        messageDisplayer.displayMessage("3) 25 cents ");
+        messageDisplayer.displayMessage("4) 50 cents ");
+        messageDisplayer.displayMessage("5) 1 dollar ");
+        messageDisplayer.displayMessage("6) 2 dollars ");
+        messageDisplayer.displayMessage("7) finish ");
+        messageDisplayer.displayMessage("Choice: ");
+    }
+
+    private BigDecimal checkCommand(final String command) {
+        final BigDecimal value = switch (command) {
             case "1" -> Coin.FIVE_CENTS.value;
             case "2" -> Coin.TEN_CENTS.value;
             case "3" -> Coin.QUARTER.value;
@@ -66,26 +79,15 @@ public class VendingMachineDialog implements Dialog {
 
     @Override
     public Item selectItem() {
-        final Scanner sc = new Scanner(System.in);
         int command;
-
         Item item = null;
         boolean selected = false;
 
         while (!selected) {
-
-            messageDisplayer.displayMessage("Choose an item from our list: ");
-            int counter = 1;
-            for (Item i : VendingMachine.itemInventory.itemToQuantity.keySet()) {
-                messageDisplayer.displayMessage(counter + ". " + i.name + " , price = " + i.price);
-                counter++;
-            }
-            messageDisplayer.displayMessage("Choose: ");
-            command = sc.nextInt();
-            sc.nextLine();
+            command = chooseItemFromList();
 
             int matcher = 1;
-            for (Item i : VendingMachine.itemInventory.itemToQuantity.keySet()) {
+            for (Item i : vendingMachine.getItemInventory().getItemToQuantity().keySet()) {
                 if (command == matcher++) {
                     item = new Item(i.name, i.price);
                     selected = true;
@@ -98,5 +100,24 @@ public class VendingMachineDialog implements Dialog {
             }
         }
         return item;
+    }
+
+    private int chooseItemFromList() {
+        final Scanner sc = new Scanner(System.in);
+        int command;
+        messageDisplayer.displayMessage("Choose an item from our list: ");
+        int counter = 1;
+        displayItems(counter);
+        messageDisplayer.displayMessage("Choose: ");
+        command = sc.nextInt();
+        sc.nextLine();
+        return command;
+    }
+
+    private void displayItems(int counter) {
+        for (Item i : vendingMachine.getItemInventory().getItemToQuantity().keySet()) {
+            messageDisplayer.displayMessage(counter + ". " + i.name + " , price = " + i.price);
+            counter++;
+        }
     }
 }
