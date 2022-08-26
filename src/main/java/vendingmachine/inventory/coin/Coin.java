@@ -9,7 +9,7 @@ public enum Coin {
 
     public final BigDecimal value;
 
-    Coin(BigDecimal value) {
+    Coin(final BigDecimal value) {
         this.value = value;
     }
 }
