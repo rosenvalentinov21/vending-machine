@@ -1,24 +1,25 @@
 package vendingmachine.state;
 
+import vendingmachine.VendingMachine;
 import vendingmachine.inventory.item.Item;
 
 import java.math.BigDecimal;
 
 public interface State {
 
-    public void addCurrency(BigDecimal amount);
+    void addCurrency(BigDecimal amount, VendingMachine vendingMachine);
 
-    public void selectItem(Item item);
+    void selectItem(Item item, VendingMachine vendingMachine);
 
-    public void makeItem();
+    void makeItem(VendingMachine vendingMachine);
 
-    public void takeItem();
+    void takeItem(VendingMachine vendingMachine);
 
-    public void returnMoney();
+    void returnMoney(VendingMachine vendingMachine);
 
-    public void service();
+    void service(VendingMachine vendingMachine);
 
-    public void endService();
+    void endService(VendingMachine vendingMachine);
 
-    public States nextState();
+    States nextState();
 }
