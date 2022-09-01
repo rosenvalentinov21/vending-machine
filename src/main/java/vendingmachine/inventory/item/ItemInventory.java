@@ -15,6 +15,7 @@ public class ItemInventory {
     }
 
     public boolean isInStock(final Item item) {
+    	//TODO You use Map for ItemToQuantity. Take advantage of it instead of loop through the keys.
         final Item foundItem = itemToQuantity.keySet().stream()
                 .filter(i -> i.name.equals(item.name)).findFirst()
                 .orElseThrow(() -> new ItemNotInStockException("The chosen item is not in stock," +
@@ -32,6 +33,7 @@ public class ItemInventory {
     }
 
     public void refillItemInventory() {
+    	//TODO Use Enum for Item if it is possible instead of String. Avoid magic values.
         itemToQuantity.clear();
         itemToQuantity.put(new Item("SHORT_COFFEE", BigDecimal.valueOf(0.60)), 250);
         itemToQuantity.put(new Item("LONG_COFFEE", BigDecimal.valueOf(0.90)), 200);
@@ -39,6 +41,7 @@ public class ItemInventory {
         itemToQuantity.put(new Item("CAPPUCCINO", BigDecimal.valueOf(1.20)), 160);
     }
 
+    //TODO Why do you expose the Map? Encapsulation?
     public Map<Item, Integer> getItemToQuantity() {
         return itemToQuantity;
     }

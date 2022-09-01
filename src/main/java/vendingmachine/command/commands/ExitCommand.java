@@ -9,6 +9,7 @@ public class ExitCommand extends Command {
         super(vendingMachine);
     }
 
+    //TODO System.exit exits the JVM and does not allow the finally blocks to execute.Therefore, resources may remain open. Avoid using it.
     @Override
     public void execute() {
         System.exit(1);

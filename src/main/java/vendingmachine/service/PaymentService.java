@@ -42,6 +42,9 @@ public class PaymentService {
         return change;
     }
 
+    //TODO use final for clientMoney parameter. Refactor that method. 
+    //As an idea, you could tell the vending machine to return the change and it could decide how.
+    //Or you could create a separate class for that logic.
     private BigDecimal getCoinIfInStock(BigDecimal clientMoney, final List<Coin> change) {
         if (clientMoney.compareTo(Coin.TWO_DOLLARS.value) >= 0 &&
                 vendingMachine.getCoinInventory().hasCoin(Coin.TWO_DOLLARS)) {
@@ -99,6 +102,7 @@ public class PaymentService {
     }
 
     private BigDecimal aggregateCoinValues(final Map<Coin, Integer> coinInventory,final List<Coin> coinTypes) {
+    	//TODO Use BigDecimal.Zero instead.
         BigDecimal balance = new BigDecimal(0);
         for (final Coin coin : coinTypes) {
             final Integer count = coinInventory.get(coin);
