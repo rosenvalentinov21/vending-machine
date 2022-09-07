@@ -1,51 +1,95 @@
 package vendingmachine.inventory.item;
 
-import org.junit.jupiter.api.Assertions;
-import org.junit.jupiter.api.Test;
-import vendingmachine.VendingMachine;
-import vendingmachine.exception.ItemNotInStockException;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.math.BigDecimal;
 import java.util.HashMap;
 import java.util.Map;
-
-import static org.junit.jupiter.api.Assertions.*;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import vendingmachine.VendingMachine;
+import vendingmachine.exception.ItemNotInStockException;
+import vendingmachine.inventory.coin.CoinInventory;
+import vendingmachine.state.States;
 
 class ItemInventoryTest {
 
-    private final VendingMachine vendingMachine = new VendingMachine();
+  private final ItemInventory itemInventory = new ItemInventory(new HashMap<>());
+  private final CoinInventory coinInventory = new CoinInventory(new HashMap<>());
+  private final VendingMachine vendingMachine = new VendingMachine(States.WAITING, BigDecimal.ZERO,
+      BigDecimal.ZERO, itemInventory, coinInventory);
+  private Map<Item, Integer> itemToQuantity;
 
-    @Test
-    void isInStockShouldSucceed() {
-        Item item = new Item("Italian espresso", BigDecimal.valueOf(2.00));
-        Map<Item, Integer> itemToQuantity = new HashMap<>();
-        itemToQuantity.put(item, 120);
-        vendingMachine.setItemInventory(new ItemInventory(itemToQuantity));
+  @BeforeEach
+  void reinitializeHashTable() {
+    itemToQuantity = new HashMap<>();
+  }
 
-        final boolean inStock = vendingMachine.getItemInventory().isInStock(item);
-        Assertions.assertTrue(inStock);
-    }
+  @Test
+  void isInStockShouldSucceed() {
+    final Item item = Item.MOCHA;
+    final ItemInventory itemInventory = new ItemInventory(itemToQuantity);
+    final int ITEM_QUANTITY = 120;
+    itemToQuantity.put(item, ITEM_QUANTITY);
 
-    @Test
-    void isInStockShouldThrowException() {
-        Item item = new Item("Italian espresso", BigDecimal.valueOf(2.00));
-        Map<Item, Integer> itemToQuantity = new HashMap<>();
-        vendingMachine.setItemInventory(new ItemInventory(itemToQuantity));
+    final boolean inStock = itemInventory.isInStock(item);
+    Assertions.assertTrue(inStock);
+  }
 
-        assertThrows(ItemNotInStockException.class,
-                () -> vendingMachine.getItemInventory().isInStock(item));
-    }
+  @Test
+  void isInStockShouldThrowException() {
+    final Item item = Item.DOUBLE_LONG_ESPRESSO;
+    final ItemInventory itemInventory = new ItemInventory(itemToQuantity);
 
-    @Test
-    void refillItemInventory() {
-        Map<Item, Integer> itemToQuantity = new HashMap<>();
-        vendingMachine.setItemInventory(new ItemInventory(itemToQuantity));
+    assertThrows(ItemNotInStockException.class,
+        () -> itemInventory.isInStock(item));
+  }
 
-        Assertions.assertEquals(0, vendingMachine.getItemInventory().getItemToQuantity().size());
+  @Test
+  void takeItemFromMachine() {
+    final Item item = Item.LATTE;
+    final ItemInventory itemInventory = new ItemInventory(itemToQuantity);
 
-        vendingMachine.getItemInventory().refillItemInventory();
+    itemInventory.setSelectedItem(item, vendingMachine);
+    assertEquals(vendingMachine.getCurrentItem(), item);
 
-        Assertions.assertTrue(vendingMachine.getItemInventory().getItemToQuantity().size() > 0);
-    }
+    itemInventory.takeItemFromMachine(vendingMachine);
+    assertNull(vendingMachine.getCurrentItem());
+  }
 
+  @Test
+  void setSelectedItem() {
+    final Item item = Item.LATTE;
+    final ItemInventory itemInventory = new ItemInventory(itemToQuantity);
+
+    itemInventory.setSelectedItem(null, vendingMachine);
+    assertNull(vendingMachine.getCurrentItem());
+
+    itemInventory.setSelectedItem(item, vendingMachine);
+    assertEquals(vendingMachine.getCurrentItem(), item);
+  }
+
+  @Test
+  void refillItemInventory() {
+    final int EXPECTED_ITEM_TYPES_QUANTITY = 0;
+    Assertions.assertEquals(EXPECTED_ITEM_TYPES_QUANTITY,
+        itemInventory.getAllItemTypes().size());
+    itemInventory.refillItemInventory();
+    Assertions.assertTrue(
+        itemInventory.getAllItemTypes().size() > EXPECTED_ITEM_TYPES_QUANTITY);
+  }
+
+  @Test
+  void getAllItems() {
+    final Item item = Item.CAPPUCCINO;
+    final ItemInventory itemInventory = new ItemInventory(itemToQuantity);
+    final int EXPECTED_ITEM_QUANTITY = 1;
+    itemToQuantity.put(item, EXPECTED_ITEM_QUANTITY);
+
+    var items = itemInventory.getAllItemTypes();
+    assertEquals(items.size(), EXPECTED_ITEM_QUANTITY);
+  }
 }

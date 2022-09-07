@@ -1,190 +1,182 @@
 package vendingmachine;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+import java.math.BigDecimal;
+import java.util.HashMap;
 import org.junit.jupiter.api.Test;
 import vendingmachine.exception.InvalidOperationException;
 import vendingmachine.inventory.coin.CoinInventory;
 import vendingmachine.inventory.item.Item;
 import vendingmachine.inventory.item.ItemInventory;
+import vendingmachine.service.PaymentService;
 import vendingmachine.state.States;
-
-import java.math.BigDecimal;
-import java.util.HashMap;
-import java.util.Map;
-
-import static org.junit.jupiter.api.Assertions.*;
 
 class VendingMachineTest {
 
-    private final VendingMachine vendingMachine = new VendingMachine();
-
-    @Test
-    void setCurrentItem() {
-        Item item = new Item("Italian mocha", BigDecimal.valueOf(2.20));
-        vendingMachine.setCurrentItem(item);
-
-        assertEquals(item, vendingMachine.getCurrentItem());
-    }
-
-    @Test
-    void addCurrencyInWaitingStateShouldSucceed() {
-        vendingMachine.setState(States.WAITING);
+  private final ItemInventory itemInventory = new ItemInventory(new HashMap<>());
+  private final CoinInventory coinInventory = new CoinInventory(new HashMap<>());
+  private final VendingMachine vendingMachine = new VendingMachine(States.WAITING, BigDecimal.ZERO,
+      BigDecimal.ZERO, itemInventory, coinInventory);
+  private final PaymentService paymentService = new PaymentService(vendingMachine);
+  private final BigDecimal CURRENCY = BigDecimal.valueOf(100);
+  private final BigDecimal CLIENT_MONEY = BigDecimal.ONE;
 
 
-        vendingMachine.setBalance(BigDecimal.valueOf(0));
-        vendingMachine.addCurrency(BigDecimal.valueOf(100));
-        assertEquals(BigDecimal.valueOf(100), vendingMachine.getClientMoney());
-    }
+  @Test
+  void setCurrentItem() {
+    final Item item = Item.ESPRESSO;
+    vendingMachine.setCurrentItem(item);
 
-    @Test
-    void addCurrencyInSelectStateShouldNotSucceed() {
-        vendingMachine.setState(States.SELECT);
+    assertEquals(item, vendingMachine.getCurrentItem());
+  }
 
-        assertThrows(InvalidOperationException.class,
-                () -> vendingMachine.addCurrency(BigDecimal.valueOf(100)));
+  @Test
+  void addCurrencyInWaitingStateShouldSucceed() {
+    vendingMachine.setState(States.WAITING);
+    vendingMachine.addCurrency(CURRENCY);
+    assertEquals(CURRENCY, vendingMachine.getClientMoney());
+  }
 
-    }
+  @Test
+  void selectItemInSelectStateShouldSucceed() {
+    vendingMachine.setState(States.WAITING);
+    vendingMachine.service();
 
-    @Test
-    void selectItemInSelectStateShouldSucceed() {
-        vendingMachine.setState(States.SELECT);
+    vendingMachine.setState(States.SELECT);
 
-        Item item = new Item("Italian latte", BigDecimal.valueOf(2.00));
-        Map<Item, Integer> itemToQuantity = new HashMap<>();
+    final Item item = Item.DOUBLE_LONG_ESPRESSO;
 
-        vendingMachine.setBalance(BigDecimal.valueOf(100));
-        vendingMachine.setClientMoney(BigDecimal.valueOf(2.00));
+    vendingMachine.setBalance(Item.DOUBLE_LONG_ESPRESSO.price);
+    vendingMachine.setClientMoney(Item.DOUBLE_LONG_ESPRESSO.price);
 
-        vendingMachine.setItemInventory(new ItemInventory(itemToQuantity));
-        vendingMachine.getCoinInventory().refillCoinInventory();
+    vendingMachine.selectItem(item);
 
-        vendingMachine.selectItem(item);
+    assertEquals(vendingMachine.getClientMoney().doubleValue(),
+        BigDecimal.ZERO.doubleValue());
+    assertEquals(item, vendingMachine.getCurrentItem());
+  }
 
-        assertEquals(vendingMachine.getClientMoney().doubleValue(), BigDecimal.valueOf(0).doubleValue());
-        assertEquals(item, vendingMachine.getCurrentItem());
-    }
+  @Test
+  void selectItemInWaitingStateShouldNotSucceed() {
+    vendingMachine.setState(States.WAITING);
 
-    @Test
-    void selectItemInWaitingStateShouldNotSucceed() {
-        vendingMachine.setState(States.WAITING);
+    final Item item = Item.CAPPUCCINO;
 
-        Item item = new Item("Italian latte", BigDecimal.valueOf(2.00));
-        Map<Item, Integer> itemToQuantity = new HashMap<>();
+    vendingMachine.service();
 
-        vendingMachine.setBalance(BigDecimal.valueOf(100));
-        vendingMachine.setClientMoney(BigDecimal.valueOf(2.00));
+    vendingMachine.setBalance(Item.CAPPUCCINO.price);
+    vendingMachine.setClientMoney(Item.CAPPUCCINO.price);
 
-        vendingMachine.setItemInventory(new ItemInventory(itemToQuantity));
-        vendingMachine.getCoinInventory().refillCoinInventory();
+    assertThrows(InvalidOperationException.class,
+        () -> vendingMachine.selectItem(item));
+  }
 
-        assertThrows(InvalidOperationException.class,
-                () -> vendingMachine.selectItem(item));
-    }
+  @Test
+  void makeItemInPrepareStateShouldSucceed() {
+    vendingMachine.setState(States.PREPARING);
 
-    @Test
-    void makeItemInPrepareStateShouldSucceed() {
-        vendingMachine.setState(States.PREPARING);
+    vendingMachine.makeItem();
 
-        vendingMachine.makeItem();
+    assertEquals(vendingMachine.getState(), States.READY);
+  }
 
-        assertEquals(vendingMachine.getState(), States.READY);
-    }
+  @Test
+  void makeItemInReadyStateShouldNotSucceed() {
+    vendingMachine.setState(States.READY);
 
-    @Test
-    void makeItemInReadyStateShouldNotSucceed() {
-        vendingMachine.setState(States.READY);
+    assertThrows(InvalidOperationException.class,
+        vendingMachine::makeItem);
+  }
 
-        assertThrows(InvalidOperationException.class,
-                vendingMachine::makeItem);
-    }
+  @Test
+  void takeItemInReadyStateShouldSucceed() {
+    vendingMachine.setState(States.READY);
 
-    @Test
-    void takeItemInReadyStateShouldSucceed() {
-        vendingMachine.setState(States.READY);
+    vendingMachine.takeItem();
 
-        vendingMachine.takeItem();
+    assertEquals(vendingMachine.getState(), States.WAITING);
+  }
 
-        assertEquals(vendingMachine.getState(), States.WAITING);
-    }
+  @Test
+  void takeItemInWaitingStateShouldNotSucceed() {
+    vendingMachine.setState(States.WAITING);
 
-    @Test
-    void takeItemInWaitingStateShouldNotSucceed() {
-        vendingMachine.setState(States.WAITING);
+    assertThrows(InvalidOperationException.class,
+        vendingMachine::takeItem);
+  }
 
-        assertThrows(InvalidOperationException.class,
-                vendingMachine::takeItem);
-    }
+  @Test
+  void returnMoneyInWaitingStateShouldSucceed() {
+    vendingMachine.setState(States.WAITING);
 
-    @Test
-    void returnMoneyInWaitingStateShouldSucceed() {
-        vendingMachine.setState(States.WAITING);
+    vendingMachine.setBalance(CURRENCY);
+    vendingMachine.setClientMoney(CLIENT_MONEY);
+    vendingMachine.getCoinInventory().refillCoinInventory();
 
-        vendingMachine.setBalance(BigDecimal.valueOf(100));
-        vendingMachine.setClientMoney(BigDecimal.valueOf(2.00));
-        vendingMachine.getCoinInventory().refillCoinInventory();
+    vendingMachine.returnMoney();
 
-        vendingMachine.returnMoney();
+    assertEquals(BigDecimal.ZERO.doubleValue(),
+        vendingMachine.getClientMoney().doubleValue());
+  }
 
-        assertEquals(BigDecimal.valueOf(0).doubleValue(), vendingMachine.getClientMoney().doubleValue());
-    }
+  @Test
+  void returnMoneyInPrepareStateShouldNotSucceed() {
+    vendingMachine.setState(States.PREPARING);
 
-    @Test
-    void returnMoneyInPrepareStateShouldNotSucceed() {
-        vendingMachine.setState(States.PREPARING);
+    vendingMachine.setBalance(CURRENCY);
+    vendingMachine.setClientMoney(CLIENT_MONEY);
 
-        vendingMachine.setBalance(BigDecimal.valueOf(100));
-        vendingMachine.setClientMoney(BigDecimal.valueOf(2.00));
+    vendingMachine.getCoinInventory().refillCoinInventory();
 
-        vendingMachine.getCoinInventory().refillCoinInventory();
+    vendingMachine.returnMoney();
 
-        vendingMachine.returnMoney();
+    assertNotEquals(BigDecimal.ZERO.doubleValue(),
+        vendingMachine.getClientMoney().doubleValue());
+  }
 
-        assertNotEquals(BigDecimal.valueOf(0).doubleValue(), vendingMachine.getClientMoney().doubleValue());
-    }
+  @Test
+  void serviceInWaitingStateShouldSucceed() {
+    vendingMachine.setState(States.WAITING);
 
-    @Test
-    void serviceInWaitingStateShouldSucceed() {
-        vendingMachine.setState(States.WAITING);
+    final int EXPECTED_INVENTORY_SIZE = 0;
+    assertEquals(vendingMachine.getItemInventory().getAllItemTypes().size(),
+        EXPECTED_INVENTORY_SIZE);
 
-        vendingMachine.setCoinInventory(new CoinInventory(new HashMap<>()));
-        vendingMachine.setItemInventory(new ItemInventory(new HashMap<>()));
+    vendingMachine.service();
+    paymentService.calculateMachineBalance();
 
-        assertEquals(vendingMachine.getItemInventory().getItemToQuantity().size(), 0);
-        assertEquals(vendingMachine.getCoinInventory().getCoinTypeToQuantity().size(), 0);
+    assertTrue(
+        vendingMachine.getItemInventory().getAllItemTypes().size() > EXPECTED_INVENTORY_SIZE);
+    assertTrue(vendingMachine.getBalance().doubleValue() > BigDecimal.ZERO.doubleValue());
 
-        vendingMachine.service();
+    assertEquals(States.WAITING, vendingMachine.getState());
+  }
 
-        assertTrue(vendingMachine.getItemInventory().getItemToQuantity().size() > 0);
-        assertTrue(vendingMachine.getCoinInventory().getCoinTypeToQuantity().size() > 0);
+  @Test
+  void serviceInSelectStateShouldNotSucceed() {
+    vendingMachine.setState(States.SELECT);
 
-        assertEquals(States.WAITING, vendingMachine.getState());
-    }
+    assertEquals(vendingMachine.getItemInventory().getAllItemTypes().size(), 0);
 
-    @Test
-    void serviceInSelectStateShouldNotSucceed() {
-        vendingMachine.setState(States.SELECT);
+    assertThrows(InvalidOperationException.class,
+        vendingMachine::service);
 
-        vendingMachine.setCoinInventory(new CoinInventory(new HashMap<>()));
-        vendingMachine.setItemInventory(new ItemInventory(new HashMap<>()));
+    assertEquals(vendingMachine.getItemInventory().getAllItemTypes().size(), 0);
 
-        assertEquals(vendingMachine.getItemInventory().getItemToQuantity().size(), 0);
-        assertEquals(vendingMachine.getCoinInventory().getCoinTypeToQuantity().size(), 0);
+    assertEquals(States.WAITING, vendingMachine.getState());
+  }
 
-        assertThrows(InvalidOperationException.class,
-                vendingMachine::service);
+  @Test
+  void returnToInitialState() {
+    vendingMachine.setState(States.SELECT);
 
-        assertEquals(vendingMachine.getItemInventory().getItemToQuantity().size(), 0);
-        assertEquals(vendingMachine.getCoinInventory().getCoinTypeToQuantity().size(), 0);
+    vendingMachine.returnToInitialState();
 
-        assertEquals(States.WAITING, vendingMachine.getState());
-    }
-
-    @Test
-    void returnToInitialState() {
-        vendingMachine.setState(States.SELECT);
-
-        vendingMachine.returnToInitialState();
-
-        assertEquals(States.WAITING, vendingMachine.getState());
-    }
+    assertEquals(States.WAITING, vendingMachine.getState());
+  }
 
 }

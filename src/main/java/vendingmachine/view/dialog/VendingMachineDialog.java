@@ -1,123 +1,119 @@
 package vendingmachine.view.dialog;
 
-import vendingmachine.VendingMachine;
+import static vendingmachine.inventory.coin.Coin.values;
+
+import java.math.BigDecimal;
+import java.util.Arrays;
 import vendingmachine.exception.InvalidCoinInputException;
 import vendingmachine.inventory.coin.Coin;
 import vendingmachine.inventory.item.Item;
 import vendingmachine.messaging.MessageDisplayer;
-
-import java.math.BigDecimal;
-import java.util.Objects;
-import java.util.Scanner;
+import vendingmachine.messaging.Reader;
 
 public class VendingMachineDialog implements Dialog {
 
-    private final MessageDisplayer messageDisplayer = new MessageDisplayer();
-    private final VendingMachine vendingMachine;
+  private final MessageDisplayer messageDisplayer;
+  private final Reader reader;
 
-    public VendingMachineDialog(final VendingMachine vendingMachine) {
-        this.vendingMachine = vendingMachine;
+  public VendingMachineDialog(final MessageDisplayer messageDisplayer,
+      final Reader reader) {
+    this.messageDisplayer = messageDisplayer;
+    this.reader = reader;
+  }
+
+  @Override
+  public BigDecimal addCurrency() {
+    BigDecimal amount = BigDecimal.ZERO;
+    String command;
+
+    final String EXIT_COMMAND = String.valueOf(Coin.values().length + 1);
+
+    boolean finished = false;
+    while (!finished) {
+      command = getChosenCoin();
+
+      if (command.equals(EXIT_COMMAND)) {
+        finished = true;
+      } else {
+        amount = addAmount(amount, command);
+      }
     }
 
-    @Override
-    public BigDecimal addCurrency() {
-        final Scanner sc = new Scanner(System.in);
-        BigDecimal amount = BigDecimal.valueOf(0);
-        String command;
+    messageDisplayer.displayMessage("Thanks, you inserted " + amount + " dollars.");
+    return amount;
+  }
 
-        while (true) {
-            displayCoins();
-            command = sc.nextLine();
+  private String getChosenCoin() {
+    displayCoins();
+    messageDisplayer.displayMessage("Choice: ");
+    return reader.readNextLine();
+  }
 
-            if (command.equals("7")) {
-                break;
-            } else {
-                amount = addAmount(amount, command);
-            }
-        }
 
-        messageDisplayer.displayMessage("Thanks, you inserted " + amount + " dollars.");
-        return amount;
+  private BigDecimal addAmount(BigDecimal amount, final String command) {
+    try {
+      amount = amount.add(matchCommand(command));
+    } catch (InvalidCoinInputException ex) {
+      messageDisplayer.displayMessage("Please enter a valid coin!");
     }
+    return amount;
+  }
 
-    private BigDecimal addAmount(BigDecimal amount, final String command) {
-        try {
-            amount = amount.add(checkCommand(command));
-        } catch (InvalidCoinInputException ex) {
-            messageDisplayer.displayMessage("Please enter a valid coin!");
-        }
-        return amount;
+  private void displayCoins() {
+    messageDisplayer.displayMessage("Choose coin type to insert: ");
+
+    var coinsByValuesAscending = Arrays.stream(values()).toList();
+    for (int i = 0; i < coinsByValuesAscending.size(); i++) {
+      messageDisplayer.displayMessage(values()[i].order + ") " + values()[i].value);
     }
+    messageDisplayer.displayMessage((values().length + 1) + ") " + "finish");
+  }
 
-    private void displayCoins() {
-        messageDisplayer.displayMessage("Choose coin type to insert: ");
-        messageDisplayer.displayMessage("1) 5 cents ");
-        messageDisplayer.displayMessage("2) 10 cents ");
-        messageDisplayer.displayMessage("3) 25 cents ");
-        messageDisplayer.displayMessage("4) 50 cents ");
-        messageDisplayer.displayMessage("5) 1 dollar ");
-        messageDisplayer.displayMessage("6) 2 dollars ");
-        messageDisplayer.displayMessage("7) finish ");
-        messageDisplayer.displayMessage("Choice: ");
+  private BigDecimal matchCommand(final String command) {
+    for (final Coin coin : values()) {
+      if (command.equals(String.valueOf(coin.order))) {
+        return coin.value;
+      }
     }
+    throw new InvalidCoinInputException("Please enter a valid coin");
+  }
 
-    private BigDecimal checkCommand(final String command) {
-        final BigDecimal value = switch (command) {
-            case "1" -> Coin.FIVE_CENTS.value;
-            case "2" -> Coin.TEN_CENTS.value;
-            case "3" -> Coin.QUARTER.value;
-            case "4" -> Coin.FIFTY_CENTS.value;
-            case "5" -> Coin.DOLLAR.value;
-            case "6" -> Coin.TWO_DOLLARS.value;
-            default -> BigDecimal.valueOf(0);
-        };
+  @Override
+  public Item selectItem() {
+    int command;
+    while (true) {
+      command = chooseItemFromList();
 
-        if (!Objects.equals(value, BigDecimal.valueOf(0))) {
-            return value;
-        } else throw new InvalidCoinInputException("Please enter a valid coin");
-    }
-
-    @Override
-    public Item selectItem() {
-        int command;
-        Item item = null;
-        boolean selected = false;
-
-        while (!selected) {
-            command = chooseItemFromList();
-
-            int matcher = 1;
-            for (Item i : vendingMachine.getItemInventory().getItemToQuantity().keySet()) {
-                if (command == matcher++) {
-                    item = new Item(i.name, i.price);
-                    selected = true;
-                    break;
-                }
-            }
-
-            if (!selected) {
-                messageDisplayer.displayMessage("Please choose a valid item!");
-            }
-        }
+      final Item item = getChosenItem(command);
+      if (item != null) {
         return item;
+      }
     }
+  }
 
-    private int chooseItemFromList() {
-        final Scanner sc = new Scanner(System.in);
-        int command;
-        messageDisplayer.displayMessage("Choose an item from our list: ");
-        int counter = 1;
-        displayItems(counter);
-        messageDisplayer.displayMessage("Choose: ");
-        command = sc.nextInt();
-        sc.nextLine();
-        return command;
+  private Item getChosenItem(int command) {
+    for (Item item : Item.values()) {
+      if (command == item.order) {
+        return item;
+      }
     }
+    messageDisplayer.displayMessage("Please choose a valid item!");
+    return null;
+  }
 
-    private void displayItems(int counter) {
-        for (Item i : vendingMachine.getItemInventory().getItemToQuantity().keySet()) {
-            messageDisplayer.displayMessage(counter + ". " + i.name + " , price = " + i.price);
-            counter++;
-        }
+
+  private int chooseItemFromList() {
+    messageDisplayer.displayMessage("Choose an item from our list: ");
+    displayItems();
+    messageDisplayer.displayMessage("Choose: ");
+    return reader.readNextInteger();
+  }
+
+  private void displayItems() {
+    int counter = 1;
+    for (Item item : Item.values()) {
+      messageDisplayer.displayMessage(counter + ". " + item + " , price = " + item.price);
+      counter++;
     }
+  }
 }

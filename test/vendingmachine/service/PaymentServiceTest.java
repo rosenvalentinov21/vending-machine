@@ -1,37 +1,52 @@
 package vendingmachine.service;
 
-import org.junit.jupiter.api.Test;
-import vendingmachine.VendingMachine;
-import vendingmachine.inventory.coin.Coin;
-import vendingmachine.inventory.coin.CoinInventory;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import java.math.BigDecimal;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import org.junit.jupiter.api.Test;
+import vendingmachine.VendingMachine;
+import vendingmachine.inventory.coin.Coin;
+import vendingmachine.inventory.coin.CoinInventory;
+import vendingmachine.inventory.item.ItemInventory;
+import vendingmachine.state.States;
 
 class PaymentServiceTest {
 
-    private final VendingMachine vendingMachine = new VendingMachine();
-    private final PaymentService paymentService = new PaymentService(vendingMachine);
+  final ItemInventory itemInventory = new ItemInventory(new HashMap<>());
+  final CoinInventory coinInventory = new CoinInventory(new HashMap<>());
 
-    @Test
-    void getChange() {
-        vendingMachine.getCoinInventory().refillCoinInventory();
-        List<Coin> change = paymentService.getChange(BigDecimal.valueOf(2));
+  @Test
+  void getChange() {
+    final VendingMachine vendingMachine = new VendingMachine(States.WAITING, BigDecimal.ZERO,
+        BigDecimal.ZERO,
+        itemInventory, coinInventory);
+    final PaymentService paymentService = new PaymentService(vendingMachine);
 
-        assertEquals(change.get(0), Coin.TWO_DOLLARS);
-    }
+    vendingMachine.getCoinInventory().refillCoinInventory();
+    final BigDecimal EXPECTED_CHANGE = Coin.TWO_DOLLARS.value;
+    List<Coin> change = paymentService.getChange(EXPECTED_CHANGE);
 
-    @Test
-    void calculateBalance() {
-        vendingMachine.getCoinInventory().getCoinTypeToQuantity().put(Coin.DOLLAR, 100);
+    assertEquals(change.get(0).value.doubleValue(), EXPECTED_CHANGE.doubleValue());
+  }
 
-        paymentService.calculateBalance();
+  @Test
+  void calculateMachineBalance() {
+    final Map<Coin, Integer> coinTypeToQuantity = new HashMap<>();
+    final int EXPECTED_BALANCE = 100;
+    coinTypeToQuantity.put(Coin.DOLLAR, EXPECTED_BALANCE);
+    final CoinInventory coinInventory = new CoinInventory(coinTypeToQuantity);
+    final VendingMachine vendingMachine = new VendingMachine(States.WAITING, BigDecimal.ZERO,
+        BigDecimal.ZERO, itemInventory,
+        coinInventory);
 
-        assertEquals(BigDecimal.valueOf(100).doubleValue(), vendingMachine.getBalance().doubleValue());
-    }
+    final BigDecimal EXPECTED_INITIAL_BALANCE = BigDecimal.ZERO;
+    assertEquals(EXPECTED_INITIAL_BALANCE.doubleValue(), vendingMachine.getBalance().doubleValue());
+
+    final PaymentService paymentService = new PaymentService(vendingMachine);
+    paymentService.calculateMachineBalance();
+    assertEquals(EXPECTED_BALANCE, vendingMachine.getBalance().intValue());
+  }
 }

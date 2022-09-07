@@ -1,21 +1,23 @@
 package vendingmachine.command.commands;
 
 import vendingmachine.VendingMachine;
-import vendingmachine.exception.InvalidOperationException;
 import vendingmachine.command.Command;
+import vendingmachine.command.ProceedResponse;
+import vendingmachine.exception.InvalidOperationException;
 
 public class ServiceCommand extends Command {
 
-    public ServiceCommand(VendingMachine vendingMachine) {
-        super(vendingMachine);
-    }
+  public ServiceCommand(final VendingMachine vendingMachine) {
+    super(vendingMachine);
+  }
 
-    @Override
-    public void execute() {
-        try {
-            vendingMachine.service();
-        } catch (InvalidOperationException e) {
-            messageDisplayer.displayMessage(e.getMessage());
-        }
+  @Override
+  public ProceedResponse execute() {
+    try {
+      vendingMachine.service();
+    } catch (InvalidOperationException e) {
+      messageDisplayer.displayMessage(e.getMessage());
     }
+    return proceedResponse;
+  }
 }
