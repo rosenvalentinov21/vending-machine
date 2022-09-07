@@ -1,11 +1,11 @@
 package vendingmachine.view.dialog;
 
-import vendingmachine.inventory.item.Item;
-
 import java.math.BigDecimal;
+import vendingmachine.inventory.item.Item;
 
 public interface Dialog {
 
-    BigDecimal addCurrency();
-    Item selectItem();
+  BigDecimal addCurrency();
+
+  Item selectItem();
 }

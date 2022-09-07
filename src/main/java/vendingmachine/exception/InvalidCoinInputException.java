@@ -1,8 +1,8 @@
 package vendingmachine.exception;
 
-public class InvalidCoinInputException extends RuntimeException{
+public class InvalidCoinInputException extends RuntimeException {
 
-    public InvalidCoinInputException(final String message) {
-        super(message);
-    }
+  public InvalidCoinInputException(final String message) {
+    super(message);
+  }
 }

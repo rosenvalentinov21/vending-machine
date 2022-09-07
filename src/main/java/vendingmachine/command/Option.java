@@ -1,20 +1,21 @@
 package vendingmachine.command;
 
 public class Option {
-    private final String title;
-    private final Command command;
 
-    public Option(final String title,final Command command) {
-        this.title = title;
-        this.command = command;
-    }
+  private final String title;
+  private final Command command;
 
-    public String getTitle() {
-        return title;
-    }
+  public Option(final String title, final Command command) {
+    this.title = title;
+    this.command = command;
+  }
 
-    public void executeCommand() {
-        command.execute();
-    }
+  public String getTitle() {
+    return title;
+  }
+
+  public ProceedResponse executeCommand() {
+    return command.execute();
+  }
 
 }

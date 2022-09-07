@@ -1,33 +1,52 @@
 package vendingmachine.inventory.coin;
 
-import org.junit.jupiter.api.Test;
-import vendingmachine.VendingMachine;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.math.BigDecimal;
 import java.util.HashMap;
-
-import static org.junit.jupiter.api.Assertions.*;
+import java.util.Map;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 class CoinInventoryTest {
 
-    private final VendingMachine vendingMachine = new VendingMachine();
+  private Map<Coin, Integer> coinTypeToQuantity;
 
-    @Test
-    void removeCoinFromInventory() {
-        vendingMachine.getCoinInventory().refillCoinInventory();
-        final int dollarCoinCount = vendingMachine.getCoinInventory().getCoinTypeToQuantity().get(Coin.DOLLAR);
+  @BeforeEach
+  void reinitializeHashMap() {
+    coinTypeToQuantity = new HashMap<>();
+  }
 
-        vendingMachine.getCoinInventory().removeCoinFromInventory(Coin.DOLLAR);
-        assertEquals(vendingMachine.getCoinInventory().getCoinTypeToQuantity().get(Coin.DOLLAR),
-                dollarCoinCount - 1);
-    }
+  @Test
+  void removeCoinFromInventory() {
+    final int NUMBER_OF_DOLLARS = 1;
+    coinTypeToQuantity.put(Coin.DOLLAR, NUMBER_OF_DOLLARS);
+    final CoinInventory coinInventory = new CoinInventory(coinTypeToQuantity);
 
-    @Test
-    void refillCoinInventory() {
-        vendingMachine.setCoinInventory(new CoinInventory(new HashMap<>()));
-        assertEquals(0, vendingMachine.getCoinInventory().getCoinTypeToQuantity().size());
+    assertEquals(coinInventory.calculateBalance().doubleValue(), BigDecimal.ONE.doubleValue());
+    coinInventory.removeCoinFromInventory(Coin.DOLLAR);
+    assertEquals(coinInventory.calculateBalance().doubleValue(), BigDecimal.ZERO.doubleValue());
+  }
 
-        vendingMachine.getCoinInventory().refillCoinInventory();
-        assertTrue(vendingMachine.getCoinInventory().getCoinTypeToQuantity().size() > 0);
-    }
+  @Test
+  void refillCoinInventory() {
+    final CoinInventory coinInventory = new CoinInventory(coinTypeToQuantity);
+
+    assertEquals(coinInventory.calculateBalance().doubleValue(), BigDecimal.ZERO.doubleValue());
+
+    coinInventory.refillCoinInventory();
+    assertTrue(coinInventory.calculateBalance().doubleValue() > BigDecimal.ZERO.doubleValue());
+  }
+
+  @Test
+  void calculateBalance() {
+    final int NUMBER_OF_DOLLARS = 100;
+    coinTypeToQuantity.put(Coin.DOLLAR, NUMBER_OF_DOLLARS);
+    final CoinInventory coinInventory = new CoinInventory(coinTypeToQuantity);
+
+    assertEquals(coinInventory.calculateBalance().doubleValue(),
+        BigDecimal.valueOf(NUMBER_OF_DOLLARS).doubleValue());
+  }
 
 }

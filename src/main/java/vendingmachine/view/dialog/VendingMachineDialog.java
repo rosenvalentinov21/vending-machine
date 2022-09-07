@@ -1,133 +1,119 @@
 package vendingmachine.view.dialog;
 
-import vendingmachine.VendingMachine;
+import static vendingmachine.inventory.coin.Coin.values;
+
+import java.math.BigDecimal;
+import java.util.Arrays;
 import vendingmachine.exception.InvalidCoinInputException;
 import vendingmachine.inventory.coin.Coin;
 import vendingmachine.inventory.item.Item;
 import vendingmachine.messaging.MessageDisplayer;
+import vendingmachine.messaging.Reader;
 
-import java.math.BigDecimal;
-import java.util.Objects;
-import java.util.Scanner;
-
-//Why VendingMachineDialog has a VendingMachine?
 public class VendingMachineDialog implements Dialog {
 
-	private final MessageDisplayer messageDisplayer = new MessageDisplayer();
-	private final VendingMachine vendingMachine;
+  private final MessageDisplayer messageDisplayer;
+  private final Reader reader;
 
-	public VendingMachineDialog(final VendingMachine vendingMachine) {
-		this.vendingMachine = vendingMachine;
-	}
+  public VendingMachineDialog(final MessageDisplayer messageDisplayer,
+      final Reader reader) {
+    this.messageDisplayer = messageDisplayer;
+    this.reader = reader;
+  }
 
-	@Override
-	public BigDecimal addCurrency() {
-		final Scanner sc = new Scanner(System.in);
-		BigDecimal amount = BigDecimal.valueOf(0);
-		String command;
+  @Override
+  public BigDecimal addCurrency() {
+    BigDecimal amount = BigDecimal.ZERO;
+    String command;
 
-		while (true) {
-			displayCoins();
-			command = sc.nextLine();
+    final String EXIT_COMMAND = String.valueOf(Coin.values().length + 1);
 
-			// TODO Instead of break in if-else statement, you should use the condition in
-			// the loop condition.
-			// TODO Magic value?
-			if (command.equals("7")) {
-				break;
-			} else {
-				amount = addAmount(amount, command);
-			}
-		}
+    boolean finished = false;
+    while (!finished) {
+      command = getChosenCoin();
 
-		messageDisplayer.displayMessage("Thanks, you inserted " + amount + " dollars.");
-		return amount;
-	}
+      if (command.equals(EXIT_COMMAND)) {
+        finished = true;
+      } else {
+        amount = addAmount(amount, command);
+      }
+    }
 
-	private BigDecimal addAmount(BigDecimal amount, final String command) {
-		try {
-			amount = amount.add(checkCommand(command));
-		} catch (InvalidCoinInputException ex) {
-			messageDisplayer.displayMessage("Please enter a valid coin!");
-		}
-		return amount;
-	}
+    messageDisplayer.displayMessage("Thanks, you inserted " + amount + " dollars.");
+    return amount;
+  }
 
-	private void displayCoins() {
-		messageDisplayer.displayMessage("Choose coin type to insert: ");
-		messageDisplayer.displayMessage("1) 5 cents ");
-		messageDisplayer.displayMessage("2) 10 cents ");
-		messageDisplayer.displayMessage("3) 25 cents ");
-		messageDisplayer.displayMessage("4) 50 cents ");
-		messageDisplayer.displayMessage("5) 1 dollar ");
-		messageDisplayer.displayMessage("6) 2 dollars ");
-		messageDisplayer.displayMessage("7) finish ");
-		messageDisplayer.displayMessage("Choice: ");
-	}
+  private String getChosenCoin() {
+    displayCoins();
+    messageDisplayer.displayMessage("Choice: ");
+    return reader.readNextLine();
+  }
 
-	private BigDecimal checkCommand(final String command) {
-		// TODO Use Coin enum to to find out which is the entered command.
-		final BigDecimal value = switch (command) {
-		case "1" -> Coin.FIVE_CENTS.value;
-		case "2" -> Coin.TEN_CENTS.value;
-		case "3" -> Coin.QUARTER.value;
-		case "4" -> Coin.FIFTY_CENTS.value;
-		case "5" -> Coin.DOLLAR.value;
-		case "6" -> Coin.TWO_DOLLARS.value;
-		// TODO Use BigDecimal.Zero
-		default -> BigDecimal.valueOf(0);
-		};
 
-		if (!Objects.equals(value, BigDecimal.valueOf(0))) {
-			return value;
-		} else
-			throw new InvalidCoinInputException("Please enter a valid coin");
-	}
+  private BigDecimal addAmount(BigDecimal amount, final String command) {
+    try {
+      amount = amount.add(matchCommand(command));
+    } catch (InvalidCoinInputException ex) {
+      messageDisplayer.displayMessage("Please enter a valid coin!");
+    }
+    return amount;
+  }
 
-	@Override
-	public Item selectItem() {
-		int command;
-		Item item = null;
-		boolean selected = false;
+  private void displayCoins() {
+    messageDisplayer.displayMessage("Choose coin type to insert: ");
 
-		while (!selected) {
-			command = chooseItemFromList();
+    var coinsByValuesAscending = Arrays.stream(values()).toList();
+    for (int i = 0; i < coinsByValuesAscending.size(); i++) {
+      messageDisplayer.displayMessage(values()[i].order + ") " + values()[i].value);
+    }
+    messageDisplayer.displayMessage((values().length + 1) + ") " + "finish");
+  }
 
-			int matcher = 1;
-			for (Item i : vendingMachine.getItemInventory().getItemToQuantity().keySet()) {
-				// Avoid using break. Use the if condition as a loop condition.
-				if (command == matcher++) {
-					item = new Item(i.name, i.price);
-					selected = true;
-					break;
-				}
-			}
+  private BigDecimal matchCommand(final String command) {
+    for (final Coin coin : values()) {
+      if (command.equals(String.valueOf(coin.order))) {
+        return coin.value;
+      }
+    }
+    throw new InvalidCoinInputException("Please enter a valid coin");
+  }
 
-			if (!selected) {
-				messageDisplayer.displayMessage("Please choose a valid item!");
-			}
-		}
-		return item;
-	}
+  @Override
+  public Item selectItem() {
+    int command;
+    while (true) {
+      command = chooseItemFromList();
 
-	private int chooseItemFromList() {
-		// TODO Create the scanner which wraps the system.in in a singleton object and
-		// use it where it is needed.
-		final Scanner sc = new Scanner(System.in);
-		int command;
-		messageDisplayer.displayMessage("Choose an item from our list: ");
-		int counter = 1;
-		displayItems(counter);
-		messageDisplayer.displayMessage("Choose: ");
-		command = sc.nextInt();
-		sc.nextLine();
-		return command;
-	}
+      final Item item = getChosenItem(command);
+      if (item != null) {
+        return item;
+      }
+    }
+  }
 
-	private void displayItems(int counter) {
-		for (Item i : vendingMachine.getItemInventory().getItemToQuantity().keySet()) {
-			messageDisplayer.displayMessage(counter + ". " + i.name + " , price = " + i.price);
-			counter++;
-		}
-	}
+  private Item getChosenItem(int command) {
+    for (Item item : Item.values()) {
+      if (command == item.order) {
+        return item;
+      }
+    }
+    messageDisplayer.displayMessage("Please choose a valid item!");
+    return null;
+  }
+
+
+  private int chooseItemFromList() {
+    messageDisplayer.displayMessage("Choose an item from our list: ");
+    displayItems();
+    messageDisplayer.displayMessage("Choose: ");
+    return reader.readNextInteger();
+  }
+
+  private void displayItems() {
+    int counter = 1;
+    for (Item item : Item.values()) {
+      messageDisplayer.displayMessage(counter + ". " + item + " , price = " + item.price);
+      counter++;
+    }
+  }
 }
