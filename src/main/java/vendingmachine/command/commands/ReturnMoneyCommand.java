@@ -14,10 +14,11 @@ public class ReturnMoneyCommand extends Command {
   @Override
   public ProceedResponse execute() {
     try {
-      vendingMachine.returnMoney();
+      vendingMachine.returnChange();
     } catch (InvalidOperationException e) {
       messageDisplayer.displayMessage(e.getMessage());
     }
+
     return proceedResponse;
   }
 }

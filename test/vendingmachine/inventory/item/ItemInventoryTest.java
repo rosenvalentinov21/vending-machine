@@ -3,6 +3,7 @@ package vendingmachine.inventory.item;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.Mockito.mock;
 
 import java.math.BigDecimal;
 import java.util.HashMap;
@@ -13,14 +14,17 @@ import org.junit.jupiter.api.Test;
 import vendingmachine.VendingMachine;
 import vendingmachine.exception.ItemNotInStockException;
 import vendingmachine.inventory.coin.CoinInventory;
+import vendingmachine.service.PaymentService;
 import vendingmachine.state.States;
 
 class ItemInventoryTest {
 
   private final ItemInventory itemInventory = new ItemInventory(new HashMap<>());
   private final CoinInventory coinInventory = new CoinInventory(new HashMap<>());
+
+  private final PaymentService paymentService = mock(PaymentService.class);
   private final VendingMachine vendingMachine = new VendingMachine(States.WAITING, BigDecimal.ZERO,
-      BigDecimal.ZERO, itemInventory, coinInventory);
+      BigDecimal.ZERO, itemInventory, coinInventory, paymentService);
   private Map<Item, Integer> itemToQuantity;
 
   @BeforeEach

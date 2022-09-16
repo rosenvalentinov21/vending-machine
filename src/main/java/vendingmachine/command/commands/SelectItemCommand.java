@@ -5,6 +5,7 @@ import vendingmachine.command.Command;
 import vendingmachine.command.ProceedResponse;
 import vendingmachine.inventory.item.Item;
 import vendingmachine.inventory.item.ItemInventory;
+import vendingmachine.state.States;
 import vendingmachine.view.dialog.VendingMachineDialog;
 
 public class SelectItemCommand extends Command {
@@ -41,7 +42,9 @@ public class SelectItemCommand extends Command {
 
   private void processSelectedItem(final Item item) {
     vendingMachine.selectItem(item);
-    vendingMachine.makeItem();
-    vendingMachine.takeItem();
+    if (!vendingMachine.getState().equals(States.WAITING)) {
+      vendingMachine.makeItem();
+      vendingMachine.takeItem();
+    }
   }
 }

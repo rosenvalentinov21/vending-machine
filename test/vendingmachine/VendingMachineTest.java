@@ -1,9 +1,13 @@
 package vendingmachine;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 import java.math.BigDecimal;
 import java.util.HashMap;
@@ -19,11 +23,10 @@ class VendingMachineTest {
 
   private final ItemInventory itemInventory = new ItemInventory(new HashMap<>());
   private final CoinInventory coinInventory = new CoinInventory(new HashMap<>());
+  private final PaymentService paymentService = mock(PaymentService.class);
   private final VendingMachine vendingMachine = new VendingMachine(States.WAITING, BigDecimal.ZERO,
-      BigDecimal.ZERO, itemInventory, coinInventory);
-  private final PaymentService paymentService = new PaymentService(vendingMachine);
+      BigDecimal.ZERO, itemInventory, coinInventory, paymentService);
   private final BigDecimal CURRENCY = BigDecimal.valueOf(100);
-  private final BigDecimal CLIENT_MONEY = BigDecimal.ONE;
 
 
   @Test
@@ -35,44 +38,68 @@ class VendingMachineTest {
   }
 
   @Test
-  void addCurrencyInWaitingStateShouldSucceed() {
+  void addCurrencyInWaitingState_ShouldAddCurrency() {
     vendingMachine.setState(States.WAITING);
     vendingMachine.addCurrency(CURRENCY);
-    assertEquals(CURRENCY, vendingMachine.getClientMoney());
+
+    verify(paymentService).addCurrencyToMachine(any(), any());
   }
 
   @Test
-  void selectItemInSelectStateShouldSucceed() {
-    vendingMachine.setState(States.WAITING);
-    vendingMachine.service();
-
+  void selectItemInSelectState_ShouldSelectItem() {
     vendingMachine.setState(States.SELECT);
 
+    final boolean EXPECTED_RESULT = true;
     final Item item = Item.DOUBLE_LONG_ESPRESSO;
 
-    vendingMachine.setBalance(Item.DOUBLE_LONG_ESPRESSO.price);
-    vendingMachine.setClientMoney(Item.DOUBLE_LONG_ESPRESSO.price);
+    when(paymentService.clientCanAffordItem(any(), any())).thenReturn(EXPECTED_RESULT);
 
     vendingMachine.selectItem(item);
 
-    assertEquals(vendingMachine.getClientMoney().doubleValue(),
-        BigDecimal.ZERO.doubleValue());
     assertEquals(item, vendingMachine.getCurrentItem());
   }
 
   @Test
-  void selectItemInWaitingStateShouldNotSucceed() {
+  void selectItemInSelectState_WhenClientCanNotAfford_ShouldNotSelect() {
+    vendingMachine.setState(States.SELECT);
+
+    final boolean EXPECTED_RESULT = false;
+    final Item item = Item.DOUBLE_LONG_ESPRESSO;
+
+    when(paymentService.clientCanAffordItem(any(), any())).thenReturn(EXPECTED_RESULT);
+
+    vendingMachine.selectItem(item);
+
+    assertNull(vendingMachine.getCurrentItem());
+  }
+
+
+  @Test
+  void selectItemInWaiting_WhenNotEnoughMoney_ShouldNotSelectAnyItem() {
     vendingMachine.setState(States.WAITING);
 
+    final boolean EXPECTED_RESULT = false;
     final Item item = Item.CAPPUCCINO;
 
-    vendingMachine.service();
+    when(paymentService.clientCanAffordItem(any(), any())).thenReturn(EXPECTED_RESULT);
 
-    vendingMachine.setBalance(Item.CAPPUCCINO.price);
-    vendingMachine.setClientMoney(Item.CAPPUCCINO.price);
+    vendingMachine.selectItem(item);
 
-    assertThrows(InvalidOperationException.class,
-        () -> vendingMachine.selectItem(item));
+    assertNull(vendingMachine.getCurrentItem());
+  }
+
+  @Test
+  void selectItemInWaiting_WhenEnoughMoney_ShouldSelectItem() {
+    vendingMachine.setState(States.WAITING);
+
+    final boolean EXPECTED_RESPONSE = true;
+    final Item EXPECTED_ITEM = Item.CAPPUCCINO;
+
+    when(paymentService.clientCanAffordItem(any(), any())).thenReturn(EXPECTED_RESPONSE);
+
+    vendingMachine.selectItem(EXPECTED_ITEM);
+
+    assertEquals(vendingMachine.getCurrentItem(), EXPECTED_ITEM);
   }
 
   @Test
@@ -112,62 +139,34 @@ class VendingMachineTest {
   @Test
   void returnMoneyInWaitingStateShouldSucceed() {
     vendingMachine.setState(States.WAITING);
+    vendingMachine.returnChange();
 
-    vendingMachine.setBalance(CURRENCY);
-    vendingMachine.setClientMoney(CLIENT_MONEY);
-    vendingMachine.getCoinInventory().refillCoinInventory();
-
-    vendingMachine.returnMoney();
-
-    assertEquals(BigDecimal.ZERO.doubleValue(),
-        vendingMachine.getClientMoney().doubleValue());
+    verify(paymentService).returnClientMoney(any());
   }
 
   @Test
   void returnMoneyInPrepareStateShouldNotSucceed() {
     vendingMachine.setState(States.PREPARING);
+    vendingMachine.returnChange();
 
-    vendingMachine.setBalance(CURRENCY);
-    vendingMachine.setClientMoney(CLIENT_MONEY);
-
-    vendingMachine.getCoinInventory().refillCoinInventory();
-
-    vendingMachine.returnMoney();
-
-    assertNotEquals(BigDecimal.ZERO.doubleValue(),
-        vendingMachine.getClientMoney().doubleValue());
+    verify(paymentService, times(0)).returnClientMoney(any());
   }
 
   @Test
-  void serviceInWaitingStateShouldSucceed() {
+  void serviceInWaitingState_ShouldSucceed() {
     vendingMachine.setState(States.WAITING);
 
-    final int EXPECTED_INVENTORY_SIZE = 0;
-    assertEquals(vendingMachine.getItemInventory().getAllItemTypes().size(),
-        EXPECTED_INVENTORY_SIZE);
-
     vendingMachine.service();
-    paymentService.calculateMachineBalance();
 
-    assertTrue(
-        vendingMachine.getItemInventory().getAllItemTypes().size() > EXPECTED_INVENTORY_SIZE);
-    assertTrue(vendingMachine.getBalance().doubleValue() > BigDecimal.ZERO.doubleValue());
-
-    assertEquals(States.WAITING, vendingMachine.getState());
+    assertEquals(vendingMachine.getState(), States.WAITING);
+    verify(paymentService).calculateMachineBalance(any());
   }
 
   @Test
-  void serviceInSelectStateShouldNotSucceed() {
+  void serviceInSelectState_ShouldNotSucceed() {
     vendingMachine.setState(States.SELECT);
 
-    assertEquals(vendingMachine.getItemInventory().getAllItemTypes().size(), 0);
-
-    assertThrows(InvalidOperationException.class,
-        vendingMachine::service);
-
-    assertEquals(vendingMachine.getItemInventory().getAllItemTypes().size(), 0);
-
-    assertEquals(States.WAITING, vendingMachine.getState());
+    assertThrows(InvalidOperationException.class, vendingMachine::service);
   }
 
   @Test
@@ -177,6 +176,32 @@ class VendingMachineTest {
     vendingMachine.returnToInitialState();
 
     assertEquals(States.WAITING, vendingMachine.getState());
+  }
+
+  @Test
+  void addToClientBalance_ShouldIncrementClientBalance() {
+    final BigDecimal EXPECTED_BALANCE = BigDecimal.TEN;
+
+    when(paymentService.clientBalanceWithNewAmount(any(), any())).thenReturn(EXPECTED_BALANCE);
+
+    vendingMachine.setClientMoney(BigDecimal.ZERO);
+    assertEquals(vendingMachine.getClientMoney(), BigDecimal.ZERO);
+
+    vendingMachine.addToClientBalance(EXPECTED_BALANCE);
+    assertEquals(vendingMachine.getClientMoney(), EXPECTED_BALANCE);
+  }
+
+  @Test
+  void updateMachineBalance_ShouldIncrementMachineBalance() {
+    final BigDecimal EXPECTED_BALANCE = BigDecimal.TEN;
+
+    when(paymentService.balanceWithNewAmount(any(), any())).thenReturn(EXPECTED_BALANCE);
+
+    vendingMachine.setBalance(BigDecimal.ZERO);
+    assertEquals(vendingMachine.getBalance(), BigDecimal.ZERO);
+
+    vendingMachine.updateMachineBalance(EXPECTED_BALANCE);
+    assertEquals(vendingMachine.getBalance(), EXPECTED_BALANCE);
   }
 
 }
