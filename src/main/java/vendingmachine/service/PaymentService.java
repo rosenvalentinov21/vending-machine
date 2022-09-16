@@ -10,20 +10,50 @@ import java.util.stream.Collectors;
 import vendingmachine.VendingMachine;
 import vendingmachine.exception.NotEnoughCoinsException;
 import vendingmachine.inventory.coin.Coin;
+import vendingmachine.inventory.coin.CoinInventory;
 import vendingmachine.messaging.MessageDisplayer;
 
 public class PaymentService {
 
-  private final VendingMachine vendingMachine;
-
-  public PaymentService(final VendingMachine vendingMachine) {
-    this.vendingMachine = vendingMachine;
-  }
-
   private final MessageDisplayer messageDisplayer = new MessageDisplayer();
 
-  public void returnChangeToClient(final List<Coin> change) {
+  public void addCurrencyToMachine(final BigDecimal amount,
+      final VendingMachine vendingMachine) {
+    vendingMachine.updateMachineBalance(amount);
+    vendingMachine.addToClientBalance(amount);
+  }
 
+  public void returnClientMoney(final VendingMachine vendingMachine) {
+    final List<Coin> change = getChange(vendingMachine.getClientMoney(),
+        vendingMachine.getCoinInventory());
+    vendingMachine.subtractFromClientBalance(vendingMachine.getClientMoney());
+    vendingMachine.calculateCoinInventoryBalance();
+    displayChangeReturnedToClient(change);
+  }
+
+  public boolean clientCanAffordItem(final BigDecimal itemPrice, final BigDecimal clientMoney) {
+    return clientMoney.compareTo(itemPrice) >= 0;
+  }
+
+  public BigDecimal balanceWithNewAmount(final BigDecimal amount, final BigDecimal balance) {
+    return balance.add(amount);
+  }
+
+  public BigDecimal clientBalanceWithNewAmount(final BigDecimal amount,
+      final BigDecimal clientMoney) {
+    return clientMoney.add(amount);
+  }
+
+  public BigDecimal clientBalanceWithSubtractedAmount(final BigDecimal amount,
+      final BigDecimal clientMoney) {
+    return clientMoney.subtract(amount);
+  }
+
+  public BigDecimal calculateMachineBalance(final CoinInventory coinInventory) {
+    return coinInventory.calculateBalance();
+  }
+
+  private void displayChangeReturnedToClient(final List<Coin> change) {
     if (!change.isEmpty()) {
       change.forEach(coin -> messageDisplayer.displayMessage("Pop , you get returned " +
           coin.value));
@@ -33,38 +63,40 @@ public class PaymentService {
     }
   }
 
-  public List<Coin> getChange(final BigDecimal clientMoney) {
+  private List<Coin> getChange(final BigDecimal clientMoney, final CoinInventory coinInventory) {
     final List<Coin> change = new ArrayList<>();
 
     Coin returnedCoin;
     BigDecimal moneyLeft = clientMoney;
 
     while (moneyLeft.compareTo(BigDecimal.ZERO) > 0) {
-      returnedCoin = addChangeToList(change, moneyLeft);
-      moneyLeft = extractChangeFromBalances(returnedCoin, moneyLeft);
+      returnedCoin = addChangeToList(change, moneyLeft, coinInventory);
+      moneyLeft = extractChangeFromBalances(returnedCoin, moneyLeft, coinInventory);
     }
     return change;
   }
 
-  private Coin addChangeToList(final List<Coin> change, final BigDecimal moneyLeft) {
-    Coin returnedCoin = returnCoinToClient(moneyLeft);
+  private Coin addChangeToList(final List<Coin> change, final BigDecimal moneyLeft,
+      final CoinInventory coinInventory) {
+    Coin returnedCoin = getCoinFromInventory(moneyLeft, coinInventory);
     change.add(returnedCoin);
     return returnedCoin;
   }
 
   private BigDecimal extractChangeFromBalances(final Coin returnedCoin,
-      final BigDecimal moneyLeft) {
+      final BigDecimal moneyLeft, final CoinInventory coinInventory) {
     BigDecimal money = moneyLeft.subtract(returnedCoin.value);
-    vendingMachine.getCoinInventory().removeCoinFromInventory(returnedCoin);
+    coinInventory.removeCoinFromInventory(returnedCoin);
     return money;
   }
 
-  private Coin returnCoinToClient(final BigDecimal clientMoney) {
+  private Coin getCoinFromInventory(final BigDecimal clientMoney,
+      final CoinInventory coinInventory) {
 
     final List<Coin> valuesDescendingByCoinValue = getCoinsOrderedByValuesDescending();
 
     for (final Coin coin : valuesDescendingByCoinValue) {
-      if (getCoin(clientMoney, coin) != null) {
+      if (getCoin(clientMoney, coin, coinInventory) != null) {
         return coin;
       }
     }
@@ -82,31 +114,12 @@ public class PaymentService {
         }));
   }
 
-  private Coin getCoin(final BigDecimal clientMoney, final Coin coin) {
+  private Coin getCoin(final BigDecimal clientMoney, final Coin coin,
+      final CoinInventory coinInventory) {
     if (clientMoney.compareTo(coin.value) >= 0 &&
-        vendingMachine.getCoinInventory().hasCoin(coin)) {
+        coinInventory.hasCoin(coin)) {
       return coin;
     }
     return null;
-  }
-
-  public boolean checkIfClientCanAfford(final BigDecimal itemPrice) {
-    return vendingMachine.getClientMoney().compareTo(itemPrice) >= 0;
-  }
-
-  public void updateBalance(final BigDecimal amount) {
-    vendingMachine.setBalance(vendingMachine.getBalance().add(amount));
-  }
-
-  public void addToClientBalance(final BigDecimal amount) {
-    vendingMachine.setClientMoney(vendingMachine.getClientMoney().add(amount));
-  }
-
-  public void takeFromClientBalance(final BigDecimal amount) {
-    vendingMachine.setClientMoney(vendingMachine.getClientMoney().subtract(amount));
-  }
-
-  public void calculateMachineBalance() {
-    vendingMachine.setBalance(vendingMachine.getCoinInventory().calculateBalance());
   }
 }

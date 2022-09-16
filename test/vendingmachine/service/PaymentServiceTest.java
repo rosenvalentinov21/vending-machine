@@ -1,52 +1,118 @@
 package vendingmachine.service;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.Mockito.mock;
 
 import java.math.BigDecimal;
 import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
 import org.junit.jupiter.api.Test;
 import vendingmachine.VendingMachine;
-import vendingmachine.inventory.coin.Coin;
 import vendingmachine.inventory.coin.CoinInventory;
+import vendingmachine.inventory.item.Item;
 import vendingmachine.inventory.item.ItemInventory;
 import vendingmachine.state.States;
 
 class PaymentServiceTest {
 
-  final ItemInventory itemInventory = new ItemInventory(new HashMap<>());
-  final CoinInventory coinInventory = new CoinInventory(new HashMap<>());
+  private final PaymentService paymentService = new PaymentService();
+
+  private final ItemInventory itemInventory = mock(ItemInventory.class);
+  private final CoinInventory coinInventory = new CoinInventory(new HashMap<>());
 
   @Test
-  void getChange() {
+  void addCurrencyToMachine_ShouldAddToMachineBalance() {
     final VendingMachine vendingMachine = new VendingMachine(States.WAITING, BigDecimal.ZERO,
-        BigDecimal.ZERO,
-        itemInventory, coinInventory);
-    final PaymentService paymentService = new PaymentService(vendingMachine);
+        BigDecimal.ZERO, itemInventory, coinInventory, paymentService);
+    final BigDecimal EXPECTED_CURRENCY = BigDecimal.TEN;
 
+    paymentService.addCurrencyToMachine(EXPECTED_CURRENCY, vendingMachine);
+
+    assertEquals(vendingMachine.getBalance(), EXPECTED_CURRENCY);
+  }
+
+  @Test
+  void addCurrencyToMachine_ShouldAddToClientBalance() {
+    final VendingMachine vendingMachine = new VendingMachine(States.WAITING, BigDecimal.ZERO,
+        BigDecimal.ZERO, itemInventory, coinInventory, paymentService);
+    final BigDecimal EXPECTED_CURRENCY = BigDecimal.TEN;
+
+    paymentService.addCurrencyToMachine(EXPECTED_CURRENCY, vendingMachine);
+
+    assertEquals(vendingMachine.getClientMoney(), EXPECTED_CURRENCY);
+  }
+
+  @Test
+  void returnClientMoney_ShouldEmptyClientBalance() {
+    final VendingMachine vendingMachine = new VendingMachine(States.WAITING, BigDecimal.ZERO,
+        BigDecimal.ZERO, itemInventory, coinInventory, paymentService);
+    final BigDecimal INPUT = BigDecimal.TEN;
+    final BigDecimal EXPECTED_BALANCE = BigDecimal.ZERO;
+
+    vendingMachine.setClientMoney(INPUT);
     vendingMachine.getCoinInventory().refillCoinInventory();
-    final BigDecimal EXPECTED_CHANGE = Coin.TWO_DOLLARS.value;
-    List<Coin> change = paymentService.getChange(EXPECTED_CHANGE);
 
-    assertEquals(change.get(0).value.doubleValue(), EXPECTED_CHANGE.doubleValue());
+    paymentService.returnClientMoney(vendingMachine);
+
+    assertEquals(vendingMachine.getClientMoney(), EXPECTED_BALANCE);
   }
 
   @Test
-  void calculateMachineBalance() {
-    final Map<Coin, Integer> coinTypeToQuantity = new HashMap<>();
-    final int EXPECTED_BALANCE = 100;
-    coinTypeToQuantity.put(Coin.DOLLAR, EXPECTED_BALANCE);
-    final CoinInventory coinInventory = new CoinInventory(coinTypeToQuantity);
-    final VendingMachine vendingMachine = new VendingMachine(States.WAITING, BigDecimal.ZERO,
-        BigDecimal.ZERO, itemInventory,
-        coinInventory);
+  void clientCanAffordItem_ShouldReturnTrue() {
+    final Item item = Item.ESPRESSO;
+    final BigDecimal BALANCE = BigDecimal.TEN;
 
-    final BigDecimal EXPECTED_INITIAL_BALANCE = BigDecimal.ZERO;
-    assertEquals(EXPECTED_INITIAL_BALANCE.doubleValue(), vendingMachine.getBalance().doubleValue());
-
-    final PaymentService paymentService = new PaymentService(vendingMachine);
-    paymentService.calculateMachineBalance();
-    assertEquals(EXPECTED_BALANCE, vendingMachine.getBalance().intValue());
+    final boolean result = paymentService.clientCanAffordItem(item.price, BALANCE);
+    assertTrue(result);
   }
+
+  @Test
+  void clientCanAffordItem_ShouldReturnFalse() {
+    final Item item = Item.ESPRESSO;
+    final BigDecimal BALANCE = BigDecimal.ZERO;
+
+    final boolean result = paymentService.clientCanAffordItem(item.price, BALANCE);
+    assertFalse(result);
+  }
+
+  @Test
+  void balanceWithNewAmount_ShouldReturnAddedAmounts() {
+    final BigDecimal BALANCE = BigDecimal.TEN;
+    final BigDecimal AMOUNT = BigDecimal.ONE;
+    final BigDecimal EXPECTED_RESULT = BALANCE.add(AMOUNT);
+
+    final BigDecimal actualResult = paymentService.balanceWithNewAmount(AMOUNT, BALANCE);
+    assertEquals(actualResult, EXPECTED_RESULT);
+  }
+
+  @Test
+  void clientBalanceWithNewAmount_ShouldReturnAddedAmounts() {
+    final BigDecimal BALANCE = BigDecimal.TEN;
+    final BigDecimal AMOUNT = BigDecimal.ONE;
+    final BigDecimal EXPECTED_RESULT = BALANCE.add(AMOUNT);
+
+    final BigDecimal actualResult = paymentService.clientBalanceWithNewAmount(AMOUNT, BALANCE);
+    assertEquals(actualResult, EXPECTED_RESULT);
+  }
+
+  @Test
+  void clientBalanceWithSubtractedAmount_ShouldReturnSubtractedAmounts() {
+    final BigDecimal BALANCE = BigDecimal.TEN;
+    final BigDecimal AMOUNT = BigDecimal.ONE;
+    final BigDecimal EXPECTED_RESULT = BALANCE.subtract(AMOUNT);
+
+    final BigDecimal actualResult = paymentService.clientBalanceWithSubtractedAmount(AMOUNT,
+        BALANCE);
+    assertEquals(actualResult, EXPECTED_RESULT);
+  }
+
+  @Test
+  void calculateMachineBalance_ShouldCalculateBalance() {
+    paymentService.calculateMachineBalance(coinInventory);
+    final BigDecimal result = paymentService.calculateMachineBalance(coinInventory);
+
+    assertTrue(result.compareTo(BigDecimal.ZERO) >= 0);
+  }
+
 }

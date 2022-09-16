@@ -9,6 +9,7 @@ import vendingmachine.inventory.coin.CoinInventory;
 import vendingmachine.inventory.item.ItemInventory;
 import vendingmachine.messaging.MessageDisplayer;
 import vendingmachine.messaging.Reader;
+import vendingmachine.service.PaymentService;
 import vendingmachine.state.States;
 import vendingmachine.view.dialog.VendingMachineDialog;
 
@@ -23,8 +24,10 @@ public class Application {
     final Scanner scanner = new Scanner(System.in);
     final Reader reader = new Reader(scanner);
 
+    final PaymentService paymentService = new PaymentService();
+
     final VendingMachine vendingMachine = new VendingMachine(States.WAITING, BigDecimal.ZERO,
-        BigDecimal.ZERO, itemInventory, coinInventory);
+        BigDecimal.ZERO, itemInventory, coinInventory, paymentService);
     vendingMachine.getCoinInventory().refillCoinInventory();
     vendingMachine.getItemInventory().refillItemInventory();
 

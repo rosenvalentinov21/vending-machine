@@ -28,10 +28,10 @@ class VendingMachineDialogTest {
         String.valueOf(Coin.values().length + 1));
 
     final var returnedAmount = vendingMachineDialog.addCurrency();
-    final var EXPECTED_AMOUNT = Arrays.stream(Coin.values())
+    final var EXPECTED_AMOUNT_AT_INDEX = Arrays.stream(Coin.values())
         .filter(coin -> coin.order == BigDecimal.ONE.intValue()).findAny()
         .orElseThrow(NoSuchElementException::new);
-    assertEquals(returnedAmount, EXPECTED_AMOUNT.value);
+    assertEquals(returnedAmount, EXPECTED_AMOUNT_AT_INDEX.value);
   }
 
   @Test
@@ -40,11 +40,11 @@ class VendingMachineDialogTest {
         Item.values().length + 1);
 
     final var selectedItem = vendingMachineDialog.selectItem();
-    final var EXPECTED_ITEM = Arrays.stream(Item.values())
+    final var EXPECTED_ITEM_AT_INDEX = Arrays.stream(Item.values())
         .filter(item -> item.order == BigDecimal.ONE.intValue()).findAny()
         .orElseThrow(NoSuchElementException::new);
 
-    assertEquals(selectedItem.price, EXPECTED_ITEM.price);
-    assertEquals(selectedItem.order, EXPECTED_ITEM.order);
+    assertEquals(selectedItem.price, EXPECTED_ITEM_AT_INDEX.price);
+    assertEquals(selectedItem.order, EXPECTED_ITEM_AT_INDEX.order);
   }
 }

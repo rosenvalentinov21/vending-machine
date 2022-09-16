@@ -4,6 +4,7 @@ import java.math.BigDecimal;
 import vendingmachine.inventory.coin.CoinInventory;
 import vendingmachine.inventory.item.Item;
 import vendingmachine.inventory.item.ItemInventory;
+import vendingmachine.service.PaymentService;
 import vendingmachine.state.States;
 
 public class VendingMachine {
@@ -12,31 +13,26 @@ public class VendingMachine {
   private BigDecimal balance;
   private BigDecimal clientMoney;
 
+  private Item currentItem = null;
+
   private final ItemInventory itemInventory;
   private final CoinInventory coinInventory;
 
+  private final PaymentService paymentService;
+
   public VendingMachine(final States state, final BigDecimal balance,
       final BigDecimal clientMoney, final ItemInventory itemInventory,
-      final CoinInventory coinInventory) {
+      final CoinInventory coinInventory, final PaymentService paymentService) {
     this.state = state;
     this.balance = balance;
     this.clientMoney = clientMoney;
     this.itemInventory = itemInventory;
     this.coinInventory = coinInventory;
-  }
-
-  private Item currentItem = null;
-
-  public void setCurrentItem(final Item currentItem) {
-    this.currentItem = currentItem;
-  }
-
-  public Item getCurrentItem() {
-    return currentItem;
+    this.paymentService = paymentService;
   }
 
   public void addCurrency(final BigDecimal amount) {
-    state.addCurrency(amount, this);
+    state.addCurrency(amount, this, paymentService);
   }
 
   public void selectItem(final Item item) {
@@ -51,12 +47,44 @@ public class VendingMachine {
     state.takeItem(this);
   }
 
-  public void returnMoney() {
-    state.returnMoney(this);
+  public void returnChange() {
+    state.returnMoney(this, paymentService);
   }
 
   public void service() {
     state.service(this);
+  }
+
+  public boolean checkClientBalance(final Item item) {
+    return paymentService.clientCanAffordItem(item.price, clientMoney);
+  }
+
+  public void addToClientBalance(final BigDecimal amount) {
+    clientMoney = paymentService.clientBalanceWithNewAmount(amount, clientMoney);
+  }
+
+  public void subtractFromClientBalance(final BigDecimal amount) {
+    clientMoney = paymentService.clientBalanceWithSubtractedAmount(amount, clientMoney);
+  }
+
+  public void updateMachineBalance(final BigDecimal amount) {
+    balance = paymentService.balanceWithNewAmount(amount, balance);
+  }
+
+  public void calculateCoinInventoryBalance() {
+    balance = paymentService.calculateMachineBalance(coinInventory);
+  }
+
+  public void setCurrentItem(final Item currentItem) {
+    this.currentItem = currentItem;
+  }
+
+  public Item getCurrentItem() {
+    return currentItem;
+  }
+
+  public States getState() {
+    return state;
   }
 
   public void setState(final States state) {
@@ -65,10 +93,6 @@ public class VendingMachine {
 
   public void returnToInitialState() {
     state = States.WAITING;
-  }
-
-  public States getState() {
-    return state;
   }
 
   public BigDecimal getBalance() {
